@@ -21,8 +21,8 @@ fi
 
 # Skip db ping if SKIP_DB_PING is set to a value other than false or empty string
 if [[ "$SKIP_DB_PING" == "false" ]]; then
-  # Ensures that the database is available
-  python ping.py
+    # Ensures that the database is available
+    python ping.py
 fi
 
 # Initialize database
@@ -31,7 +31,7 @@ flask db upgrade
 # Start CTFd
 echo "Starting CTFd"
 exec gunicorn 'CTFd:create_app()' \
-    --bind '0.0.0.0:8000' \
+    --bind 'unix:///ipc/CTFd/sock' \
     --workers $WORKERS \
     --worker-tmp-dir "$WORKER_TEMP_DIR" \
     --worker-class "$WORKER_CLASS" \

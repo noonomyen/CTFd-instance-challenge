@@ -3,18 +3,19 @@ services:
     build: .
     user: root
     restart: always
-    ports:
-      - "8000:8000"
     environment:
       - UPLOAD_FOLDER=/var/uploads
-      - DATABASE_URL=mysql+pymysql://ctfd:ctfd@db/ctfd
-      - REDIS_URL=redis://cache:6379
+      - DATABASE_URL=mysql+pymysql://ctfd:ctfd@localhost/ctfd?unix_socket=/ipc/db/sock
+      - REDIS_URL=unix:///ipc/cache/sock
       - WORKERS=1
       - LOG_FOLDER=/var/log/CTFd
       - ACCESS_LOG=-
       - ERROR_LOG=-
       - REVERSE_PROXY=true
     volumes:
+      - .ipc/CTFd:/ipc/CTFd
+      - .ipc/db:/ipc/db
+      - .ipc/cache:/ipc/cache
       - .data/CTFd/logs:/var/log/CTFd
       - .data/CTFd/uploads:/var/uploads
       - .:/opt/CTFd:ro
@@ -28,6 +29,7 @@ services:
     image: nginx:stable
     restart: always
     volumes:
+      - .ipc/CTFd:/ipc/CTFd
       - ./conf/nginx/http.conf:/etc/nginx/nginx.conf
     ports:
       - 80:80
@@ -44,19 +46,26 @@ services:
       - MARIADB_DATABASE=ctfd
       - MARIADB_AUTO_UPGRADE=1
     volumes:
+      - .ipc/db:/ipc/db
       - .data/mysql:/var/lib/mysql
     networks:
         internal:
     # This command is required to set important mariadb defaults
-    command: [mysqld, --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --wait_timeout=28800, --log-warnings=0]
+    command: [mysqld, --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --wait_timeout=28800, --log-warnings=0, --socket=/ipc/db/sock]
 
   cache:
     image: redis:4
     restart: always
     volumes:
-    - .data/redis:/data
+      - .ipc/cache:/ipc/cache
+      - ./conf/redis/redis.conf:/etc/redis/redis.conf
+      - .data/redis:/data
     networks:
         internal:
+    command: [
+      "/bin/sh", "-c",
+      "chown -R redis /ipc/cache && redis-server /etc/redis/redis.conf"
+    ]
 
 networks:
     default:

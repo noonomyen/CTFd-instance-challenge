@@ -4,6 +4,8 @@ Essentially a cross-platform, database agnostic mysqladmin.
 """
 import time
 
+from os.path import exists
+
 from sqlalchemy import create_engine
 from sqlalchemy.engine.url import make_url
 
@@ -18,6 +20,15 @@ if url.drivername.startswith("sqlite"):
 # Null out the database so raw_connection doesnt error if it doesnt exist
 # CTFd will create the database if it doesnt exist
 url = url._replace(database=None)
+
+print("Waiting for db and cache unix socket")
+while True:
+    if exists("/ipc/db/sock") and exists("/ipc/cache/sock"):
+        break
+    print(".", end="", flush=True)
+    time.sleep(1)
+
+print(f" OK")
 
 # Wait for the database server to be available
 engine = create_engine(url)
